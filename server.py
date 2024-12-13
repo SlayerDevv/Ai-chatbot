@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama.llms import OllamaLLM
 import json
@@ -25,16 +25,16 @@ def chat():
         if not payload:
             return jsonify({"error": "Invalid payload"}), 400
     else:
-        message = request.form.to_dict()
-        if not message or not message.get("payload"):
-            return jsonify({"error": "Invalid input"}), 400
-        payload = message.get("payload")
-    try:
-        response = chain.invoke({"user_input": payload, "context": ""})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    result = jsonify({"response": response})
-    return result
+        return jsonify({"error": "Invalid input"}), 400
+
+    def generate():
+        try:
+            for chunk in chain.stream({"user_input": payload, "context": ""}):
+                yield f"{chunk}" 
+        except Exception as e:
+            yield f"Error: {str(e)}"
+
+    return Response(generate(), content_type="text/plain")
 
 
 if __name__ == "__main__":
